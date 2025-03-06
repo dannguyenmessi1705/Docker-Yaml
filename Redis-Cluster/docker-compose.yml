@@ -1,0 +1,104 @@
+services:
+  redis_1:
+    image: "redis:6.2"
+    container_name: redis_1
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      redis_cluster_net:
+        ipv4_address: 173.18.0.2
+
+  redis_2:
+    image: "redis:6.2"
+    container_name: redis_2
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      redis_cluster_net:
+        ipv4_address: 173.18.0.3
+
+  redis_3:
+    image: "redis:6.2"
+    container_name: redis_3
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      redis_cluster_net:
+        ipv4_address: 173.18.0.4
+
+  redis_4:
+    image: "redis:6.2"
+    container_name: redis_4
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      redis_cluster_net:
+        ipv4_address: 173.18.0.5
+
+  redis_5:
+    image: "redis:6.2"
+    container_name: redis_5
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      redis_cluster_net:
+        ipv4_address: 173.18.0.6
+
+  redis_6:
+    image: "redis:6.2"
+    container_name: redis_6
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      redis_cluster_net:
+        ipv4_address: 173.18.0.7
+
+  cluster_initiator:
+    container_name: cluster_initiator
+    build:
+      context: redis
+      dockerfile: Dockerfile
+    tty: true
+    depends_on:
+      - redis_1
+      - redis_2
+      - redis_3
+      - redis_4
+      - redis_5
+      - redis_6
+    networks:
+      redis_cluster_net:
+        ipv4_address: 173.18.0.8
+
+  redis_commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis_web
+    environment:
+      REDIS_HOSTS: "local:redis_1:6379,local:redis_2:6379,local:redis_3:6379"
+    ports:
+      - "5050:8081"
+    depends_on:
+      - redis_1
+      - redis_2
+      - redis_3
+      - redis_4
+      - redis_5
+      - redis_6
+      - cluster_initiator
+    networks:
+      redis_cluster_net:
+        ipv4_address: 173.18.0.9
+
+networks:
+  redis_cluster_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 173.18.0.0/16
