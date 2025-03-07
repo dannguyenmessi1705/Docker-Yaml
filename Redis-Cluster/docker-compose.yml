@@ -2,8 +2,11 @@ services:
   redis_1:
     image: "redis:6.2"
     container_name: redis_1
+    ports:
+      - 7001:7001
+      - 17001:17001
     volumes:
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./redis/cluster_1/redis.conf:/usr/local/etc/redis/redis.conf
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     networks:
       redis_cluster_net:
@@ -12,8 +15,11 @@ services:
   redis_2:
     image: "redis:6.2"
     container_name: redis_2
+    ports:
+      - 7002:7002
+      - 17002:17002
     volumes:
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./redis/cluster_2/redis.conf:/usr/local/etc/redis/redis.conf
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     networks:
       redis_cluster_net:
@@ -22,8 +28,11 @@ services:
   redis_3:
     image: "redis:6.2"
     container_name: redis_3
+    ports:
+      - 7003:7003
+      - 17003:17003
     volumes:
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./redis/cluster_3/redis.conf:/usr/local/etc/redis/redis.conf
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     networks:
       redis_cluster_net:
@@ -32,8 +41,11 @@ services:
   redis_4:
     image: "redis:6.2"
     container_name: redis_4
+    ports:
+      - 7004:7004
+      - 17004:17004
     volumes:
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./redis/cluster_4/redis.conf:/usr/local/etc/redis/redis.conf
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     networks:
       redis_cluster_net:
@@ -42,8 +54,11 @@ services:
   redis_5:
     image: "redis:6.2"
     container_name: redis_5
+    ports:
+      - 7005:7005
+      - 17005:17005
     volumes:
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./redis/cluster_5/redis.conf:/usr/local/etc/redis/redis.conf
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     networks:
       redis_cluster_net:
@@ -52,8 +67,11 @@ services:
   redis_6:
     image: "redis:6.2"
     container_name: redis_6
+    ports:
+      - 7006:7006
+      - 17006:17006
     volumes:
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./redis/cluster_6/redis.conf:/usr/local/etc/redis/redis.conf
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     networks:
       redis_cluster_net:
@@ -75,25 +93,6 @@ services:
     networks:
       redis_cluster_net:
         ipv4_address: 173.18.0.8
-
-  redis_commander:
-    image: rediscommander/redis-commander:latest
-    container_name: redis_web
-    environment:
-      REDIS_HOSTS: "local:redis_1:6379,local:redis_2:6379,local:redis_3:6379"
-    ports:
-      - "5050:8081"
-    depends_on:
-      - redis_1
-      - redis_2
-      - redis_3
-      - redis_4
-      - redis_5
-      - redis_6
-      - cluster_initiator
-    networks:
-      redis_cluster_net:
-        ipv4_address: 173.18.0.9
 
 networks:
   redis_cluster_net:
