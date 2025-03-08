@@ -15,3 +15,4 @@ services:
       - IPC_LOCK # Cấp quyền để vault có thể sử dụng memory lock (để lưu trữ dữ liệu)
     volumes:
       - ./vault-init.sh:/vault-init.sh
+    command: sh -c "vault server -dev & sleep 5 && sh /vault-init.sh"
