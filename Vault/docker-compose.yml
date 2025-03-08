@@ -15,3 +15,5 @@ services:
       - IPC_LOCK # Cấp quyền để vault có thể sử dụng memory lock (để lưu trữ dữ liệu)
     volumes:
       - ./vault-init.sh:/vault-init.sh
+      - ./policy.hcl:/policy.hcl
+    entrypoint: ["/bin/sh", "-c", "/vault-init.sh"]
