@@ -1,0 +1,12 @@
+services:
+  mariadb:
+    image: mariadb:10.3
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: switching
+      MYSQL_USER: didannguyen
+      MYSQL_PASSWORD: 17052002
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./db:/var/lib/mysql
