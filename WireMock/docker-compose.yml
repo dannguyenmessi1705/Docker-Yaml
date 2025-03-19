@@ -1,0 +1,13 @@
+services:
+  wiremock:
+    image: "wiremock/wiremock:3.12.1"
+    ports:
+      - 8000:8080
+    container_name: my_wiremock
+    volumes:
+      - ./extensions:/var/wiremock/extensions
+      - ./__files:/home/wiremock/__files
+      - ./mappings:/home/wiremock/mappings
+    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose"]
+
+# Sau đó truy cập vào http://localhost:8000/__admin/docs để xem, tạo api mock
