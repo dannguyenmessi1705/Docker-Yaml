@@ -11,3 +11,4 @@ services:
     entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose"]
 
 # Sau đó truy cập vào http://localhost:8000/__admin/docs để xem, tạo api mock
+# Muốn sử dụng giao diện thay vì api, dùng file wiremock-standalone-3.10.25.jar và chạy lệnh java -jar wiremock-standalone-3.10.25.jar --global-response-templating --disable-gzip --verbose --port 8000
