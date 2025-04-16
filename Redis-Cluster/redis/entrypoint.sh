@@ -10,7 +10,7 @@ sleep 5
 # redis-cli doesn't support hostnames, we must match the
 # container IP addresses from our docker-compose configuration.
 # `--cluster-replicas 1` Will make sure that every master node will have its replica node
-echo "yes" | redis-cli --cluster create \
+echo "yes" | redis-cli -a 17052002 --cluster create \
   192.168.1.12:7001 \
   192.168.1.12:7002 \
   192.168.1.12:7003 \
