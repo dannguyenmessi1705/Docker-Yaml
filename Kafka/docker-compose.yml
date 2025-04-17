@@ -1,73 +1,151 @@
+# Cấu hình các dịch vụ trong hệ thống Kafka
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.3.2
-    container_name: zookeeper
+  # Dịch vụ Zookeeper 1 - Quản lý cấu hình và đồng bộ hóa cho Kafka
+  zookeeper1:
+    image: confluentinc/cp-zookeeper:7.3.2  # Sử dụng image Zookeeper từ Confluent Platform
+    container_name: zookeeper1  # Tên container
     environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_CLIENT_PORT: 2181  # Port mặc định cho client kết nối
+      ZOOKEEPER_TICK_TIME: 2000  # Thời gian tick (ms) cho Zookeeper
     ports:
-      - 2181:2181
-      - 2888:2888
-      - 3888:3888
-      - 22181:22181
+      - 2181:2181  # Port cho client kết nối
+      - 2888:2888  # Port cho follower kết nối với leader
+      - 3888:3888  # Port cho leader election
     networks:
-      - kafka-network
-  kafka:
-    image: confluentinc/cp-kafka:7.3.2
-    container_name: kafka
-    healthcheck:
-      test: nc -z localhost 9092 || exit -1
-      start_period: 15s
-      interval: 5s
-      timeout: 10s
-      retries: 10
+      - kafka-network  # Kết nối với mạng kafka-network
+
+  # zookeeper2:
+  #   image: confluentinc/cp-zookeeper:7.3.2
+  #   container_name: zookeeper2
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2182
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   ports:
+  #     - 2182:2182
+  #     - 2889:2888
+  #     - 3889:3888
+  #   networks:
+  #     - kafka-network
+
+  # Dịch vụ Kafka 1 - Message broker chính
+  kafka1:
+    image: confluentinc/cp-kafka:7.3.2  # Sử dụng image Kafka từ Confluent Platform
+    container_name: kafka1  # Tên container
+    healthcheck:  # Cấu hình kiểm tra sức khỏe container
+      test: nc -z localhost 9092 || exit -1  # Kiểm tra port 9092 có hoạt động không
+      start_period: 15s  # Thời gian chờ trước khi bắt đầu kiểm tra
+      interval: 5s  # Khoảng thời gian giữa các lần kiểm tra
+      timeout: 10s  # Thời gian tối đa cho mỗi lần kiểm tra
+      retries: 10  # Số lần thử lại nếu kiểm tra thất bại
     ports:
-      - "9092:9092"
-      - "29092:29092"
-      - "9997:9997"
+      - "9092:9092"  # Port cho producer/consumer kết nối
+      - "29092:29092"  # Port cho inter-broker communication
+      - "9997:9997"  # Port cho JMX monitoring
     depends_on:
-      - zookeeper
+      - zookeeper1  # Phụ thuộc vào zookeeper1
     environment:
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT # Tên của listener để broker giao tiếp với nhau
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_COMPRESSION_TYPE: producer
-      KAFKA_BROKER_ID: 1 # Id của broker, mỗi broker phải có một id khác nhau
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181' # Địa chỉ của zookeeper để broker kết nối
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092 # Set port để expose ra ngoài (dùng port 9092 hoặc 29092)
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # Số lượng replica của topic offsets (yêu cầu nếu ít hơn 3 broker)
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_JMX_PORT: 9997
-      KAFKA_JMX_OPTS: -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka0 -Dcom.sun.management.jmxremote.rmi.port=9997
-      KAFKA_PROCESS_ROLES: 'broker,controller'
-      KAFKA_NODE_ID: 1
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
-      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092 # Địa chỉ của broker để producer/consumer kết nối (dùng port 9092 hoặc 29092)
-      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      # Cấu hình cơ bản
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT  # Tên listener cho giao tiếp giữa các broker
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER  # Tên listener cho controller
+      KAFKA_COMPRESSION_TYPE: producer  # Loại nén dữ liệu
+      KAFKA_BROKER_ID: 1  # ID duy nhất cho mỗi broker
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper1:2181'  # Địa chỉ kết nối Zookeeper
+      
+      # Cấu hình listeners và advertised listeners
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:29092,PLAINTEXT_HOST://localhost:9092  # Các listener được quảng bá
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT  # Map giữa listener và security protocol
+      
+      # Cấu hình replication và transaction
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1  # Số replica cho topic offsets
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0  # Thời gian delay trước khi rebalance
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1  # Số replica cho license topic
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1  # Số ISR tối thiểu cho transaction state
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1  # Số replica cho transaction state
+      
+      # Cấu hình JMX
+      KAFKA_JMX_PORT: 9997  # Port cho JMX
+      KAFKA_JMX_OPTS: -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka1 -Dcom.sun.management.jmxremote.rmi.port=9997  # Các tùy chọn JMX
+      
+      # Cấu hình KRaft (Kafka Raft)
+      KAFKA_PROCESS_ROLES: 'broker,controller'  # Vai trò của node
+      KAFKA_NODE_ID: 1  # ID của node
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:29093  # Danh sách các voter trong quorum
+      KAFKA_LISTENERS: PLAINTEXT://kafka1:29092,CONTROLLER://kafka1:29093,PLAINTEXT_HOST://0.0.0.0:9092  # Các listener
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs  # Thư mục lưu log
     volumes:
-      - ./update_run.sh:/tmp/update_run.sh
-    command: "bash -c 'if [ ! -f /tmp/update_run.sh ]; then echo \"ERROR: Did you forget the update_run.sh file that came with this docker-compose.yml file?\" && exit 1 ; else /tmp/update_run.sh && /etc/confluent/docker/run ; fi'"
+      - ./update_run.sh:/tmp/update_run.sh  # Mount script cập nhật
+    command: "bash -c 'if [ ! -f /tmp/update_run.sh ]; then echo \"ERROR: Did you forget the update_run.sh file that came with this docker-compose.yml file?\" && exit 1 ; else /tmp/update_run.sh && /etc/confluent/docker/run ; fi'"  # Command khởi động
     networks:
-      - kafka-network
+      - kafka-network  # Kết nối với mạng kafka-network
 
+  # kafka2:
+  #   image: confluentinc/cp-kafka:7.3.2
+  #   container_name: kafka2
+  #   healthcheck:
+  #     test: nc -z localhost 9093 || exit -1
+  #     start_period: 15s
+  #     interval: 5s
+  #     timeout: 10s
+  #     retries: 10
+  #   ports:
+  #     - "9093:9093"
+  #     - "29093:29093"
+  #     - "9998:9998"
+  #   depends_on:
+  #     - zookeeper2
+  #   environment:
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  #     KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  #     KAFKA_COMPRESSION_TYPE: producer
+  #     KAFKA_BROKER_ID: 2
+  #     KAFKA_ZOOKEEPER_CONNECT: 'zookeeper2:2182'
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29093,PLAINTEXT_HOST://localhost:9093
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  #     KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  #     KAFKA_JMX_PORT: 9998
+  #     KAFKA_JMX_OPTS: -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka2 -Dcom.sun.management.jmxremote.rmi.port=9998
+  #     KAFKA_PROCESS_ROLES: 'broker,controller'
+  #     KAFKA_NODE_ID: 2
+  #     KAFKA_CONTROLLER_QUORUM_VOTERS: 2@kafka2:29094
+  #     KAFKA_LISTENERS: PLAINTEXT://kafka2:29093,CONTROLLER://kafka2:29094,PLAINTEXT_HOST://0.0.0.0:9093
+  #     KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+  #   volumes:
+  #     - ./update_run.sh:/tmp/update_run.sh
+  #   command: "bash -c 'if [ ! -f /tmp/update_run.sh ]; then echo \"ERROR: Did you forget the update_run.sh file that came with this docker-compose.yml file?\" && exit 1 ; else /tmp/update_run.sh && /etc/confluent/docker/run ; fi'"
+  #   networks:
+  #     - kafka-network
+
+  # Dịch vụ Kafka UI - Giao diện quản lý Kafka
   kafbat-ui:
-    container_name: kafbat-ui
-    image: ghcr.io/kafbat/kafka-ui:latest
+    container_name: kafbat-ui  # Tên container
+    image: ghcr.io/kafbat/kafka-ui:latest  # Sử dụng image Kafka UI
     ports:
-      - 8017:8080
+      - 8017:8080  # Expose port 8080 ra port 8017
     depends_on:
-      - kafka
+      - kafka1  # Phụ thuộc vào kafka1
+      # - kafka2
     environment:
-      KAFKA_CLUSTERS_0_NAME: kafka
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092 # Địa chỉ của broker để producer/consumer kết nối
-      KAFKA_CLUSTERS_0_METRICS_PORT: 9997
-      DYNAMIC_CONFIG_ENABLED: 'true'
+      # Cấu hình cluster Kafka 1
+      KAFKA_CLUSTERS_0_NAME: kafka1  # Tên cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:29092  # Địa chỉ bootstrap servers
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9997  # Port cho metrics
+      # KAFKA_CLUSTERS_1_NAME: kafka2
+      # KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS: kafka2:29093
+      # KAFKA_CLUSTERS_1_METRICS_PORT: 9998
+      
+      # Cấu hình bảo mật
+      DYNAMIC_CONFIG_ENABLED: 'true'  # Cho phép cấu hình động
+      AUTH_TYPE: "LOGIN_FORM"  # Loại xác thực sử dụng form đăng nhập
+      SPRING_SECURITY_USER_NAME: admin  # Tên đăng nhập
+      SPRING_SECURITY_USER_PASSWORD: 17052002  # Mật khẩu đăng nhập
     networks:
-      - kafka-network
+      - kafka-network  # Kết nối với mạng kafka-network
 
+# Cấu hình mạng
 networks:
-  kafka-network:
-    driver: bridge
+  kafka-network:  # Tên mạng
+    driver: bridge  # Loại driver sử dụng
