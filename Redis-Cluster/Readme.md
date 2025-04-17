@@ -54,6 +54,7 @@ appendonly yes
 ```
 
 2. Sửa file `entrypoint.sh` trong thư mục redis. Các IP sẽ là IP của máy host (Tìm trong System32/drivers/etc/hosts có tên là `host.docker.internal`). Port sẽ là port của từng node
+>> Lưu ý: `host.docker.internal` chính là địa chỉ IP của card mạng đang sử dụng. Nên sử dụng IP tĩnh cho card mạng này để tránh trường hợp IP thay đổi khi khởi động lại máy tính.
 ``` entrypoint.sh
 #!/bin/sh
 
