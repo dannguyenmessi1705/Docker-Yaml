@@ -2,3 +2,6 @@ db
 __files
 extensions
 mappings
+sonarqube_*
+sonar_*
+data
