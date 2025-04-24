@@ -70,7 +70,7 @@ pipeline {
                 script{
                     withDockerRegistry(credentialsId: 'c44439b3-1a18-4738-b550-9cb4f57d81f5', toolName: 'docker', url: 'https://docker.io') {
                         sh "docker rm -f social" 
-                        sh "docker run -d --name social -p 8080:8080 dannguyenmessi/social:latest"
+                        sh "docker run -d --name social -p 8081:8081 dannguyenmessi/social:latest"
                     }
                 }
             }
