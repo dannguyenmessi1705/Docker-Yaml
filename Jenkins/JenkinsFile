@@ -1,0 +1,79 @@
+pipeline {
+    agent any
+    
+    tools {
+        jdk 'jdk21'
+        maven 'maven3'
+    }
+    
+    environment {
+        SCANNER_HOME= tool 'sonar-scanner'
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git changelog: false, credentialsId: '403a47f9-6ecd-4669-8a78-fccfb0a31f2b', poll: false, url: 'https://github.com/dannguyenmessi1705/social.git'
+            }
+        }
+        stage('Compile') {
+            steps {
+                sh "mvn clean compile"
+            }
+        }
+        stage('Sonarqube Analysis') {
+            steps {
+                sh ''' $SCANNER_HOME/bin/sonar-scanner \
+                -Dsonar.host.url=http://192.168.1.10:9000 \
+                -Dsonar.token=squ_2a4cfd9bae9fec56e46f5fe7714be9fc259c75e5 \
+                -Dsonar.projectName=social \
+                -Dsonar.java.binaries=. \
+                -Dsonar.projectKey=social '''
+            }
+        }
+        stage('OWASP SCAN') {
+            steps {
+                dependencyCheck additionalArguments: ' --scan ./', odcInstallation: 'DP'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        stage('Build Application') {
+            steps {
+                sh "mvn clean install -DskipTests=true"
+            }
+        }
+        stage('Buidl & Push Docker Image') {
+            steps {
+                script{
+                    withDockerRegistry(credentialsId: 'c44439b3-1a18-4738-b550-9cb4f57d81f5', toolName: 'docker', url: 'https://docker.io') {
+                        sh "docker build -t social:latest -f docker/Dockerfile ."
+                        sh "docker tag social:latest dannguyenmessi/social:latest"
+                        sh "docker push dannguyenmessi/social:latest"
+                    }
+                }
+            }
+        }
+        stage('Trigger CD Pipeline') {
+            steps {
+                build job: "CD_Pipeline", wait: true
+            }
+        }
+    }
+}
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Docker Deploy To Container') {
+            steps {
+                script{
+                    withDockerRegistry(credentialsId: 'c44439b3-1a18-4738-b550-9cb4f57d81f5', toolName: 'docker', url: 'https://docker.io') {
+                        sh "docker stop social || true" 
+                        sh "docker run -d --name social -p 8080:8080 dannguyenmessi/social:latest"
+                    }
+                }
+            }
+        }
+    }
+}

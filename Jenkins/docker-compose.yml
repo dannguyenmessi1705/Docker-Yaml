@@ -1,11 +1,55 @@
 services:
   jenkins:
-    image: "jenkins/jenkins:lts"
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     container_name: jenkins-container
     ports:
-      - "8080:8080"
-      - "50000:50000"
+      - "8088:8080" # Jenkins web UI port
+      - "50000:50000" # Jenkins agent port
     volumes:
-      - ./data/jenkins:/var/jenkins_home
+      - ./data/jenkins:/var/jenkins_home # Jenkins home directory
+      - //var/run/docker.sock:/var/run/docker.sock # Docker socket for Jenkins to manage Docker containers
+    networks:
+      - jenkinsnet
+    environment:
+      JENKINS_OPTS: --httpPort=8080 # Jenkins HTTP port
+
+  sonarqube:
+    container_name: sonarqube
+    image: sonarqube:community
+    depends_on:
+      - db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonarqube?useSSL=false
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true" # Disable ES bootstrap checks for SonarQube
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./sonarqube_conf:/opt/sonarqube/conf
+      - ./sonarqube_data:/opt/sonarqube/data
+      - ./sonarqube_extensions:/opt/sonarqube/sonarqube_extensions
+      - ./sonarqube_logs:/opt/sonarqube/sonarqube_logs
+      - ./sonarqube_temp:/opt/sonarqube/temp
+    networks:
+      - jenkinsnet
+  
+  db:
+    container_name: db
+    image: postgres:13
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonarqube
     restart: unless-stopped
+    volumes:
+      - ./sonarqube_db:/var/lib/postgresql
+      - ./sonarqube_db_data:/var/lib/postgresql/data
+    networks:
+      - jenkinsnet
+
+networks:
+  jenkinsnet:
+    driver: bridge
