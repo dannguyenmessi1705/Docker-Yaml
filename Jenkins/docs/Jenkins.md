@@ -110,3 +110,126 @@ docker-compose up -d
    - Sonar Quality Gates
 
 3. Restart Jenkins sau khi cài đặt các plugin.
+
+### 3.2. Cài đặt các công cụ cần thiết cho Jenkins (Vào Manage Jenkins -> Tools)
+#### 3.2.1. Cài đặt JDK
+![alt text](image.png)
+#### 3.2.2. Cài đặt SonarQube Scanner
+![alt text](image-1.png)
+#### 3.2.3. Cài đặt Maven
+![alt text](image-2.png)
+#### 3.2.4. Cài đặt Docker
+![alt text](image-3.png)
+
+Sau đó ân nút `Save` để lưu lại cấu hình.
+### 3.3. Tạo Job CI Pipeline cho Jenkins
+Để tạo Job CI Pipeline cho Jenkins, bạn có thể làm theo các bước sau:
+1. Truy cập vào địa chỉ `http://localhost:8088` và đăng nhập vào Jenkins.
+2. Tạo một Job mới bằng cách vào `New Item` -> `Pipeline`. Đặt tên cho Job và chọn loại Job là `Pipeline`.
+3. Trong phần cấu hình Job
+3.1. Mục `General`:
+- Chọn `Discard old builds` để xóa các build cũ và tiết kiệm dung lượng lưu trữ. Sau đó, mục `Max # of builds to keep` bạn có thể nhập số lượng build tối đa mà bạn muốn giữ lại. Ví dụ: 2.
+- Trong phần `Pipeline`, bạn có thể chọn `Pipeline script from SCM` nếu bạn muốn lấy file pipeline từ Git repository. Hoặc bạn có thể chọn `Pipeline script` và nhập trực tiếp mã pipeline vào đây. Ở đây, mình sẽ chọn `Pipeline script` và nhập mã pipeline vào đây.
+```groovy
+pipeline {
+    agent any
+    
+    tools {
+        jdk 'jdk21' // // Đặt tên JDK mà bạn đã cài đặt ở bước trước set cho JDK
+        maven 'maven3' // Đặt tên Maven mà bạn đã cài đặt ở bước trước set cho Maven
+    }
+    
+    environment {
+        SCANNER_HOME= tool 'sonar-scanner' // Đặt tên SonarQube Scanner mà bạn đã cài đặt ở bước trước set cho SonarQube Scanner
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git changelog: false, credentialsId: '403a47f9-6ecd-4669-8a78-fccfb0a31f2b', poll: false, url: 'https://github.com/dannguyenmessi1705/social.git'
+            }
+        } // Stage này sẽ lấy mã nguồn từ Git repository. Bạn cần thay đổi `credentialsId` và `url` cho phù hợp với dự án của bạn. Dùng pipelinesyntax để tạo ra câu lệnh này. Bạn có thể tham khảo thêm tại [Jenkins Pipeline Syntax](![alt text](image-4.png)).
+        stage('Compile') {
+            steps {
+                sh "mvn clean compile"
+            }
+        } // Stage này dùng để biên dịch mã nguồn Java. Bạn có thể thay đổi lệnh này nếu bạn sử dụng ngôn ngữ khác.
+        stage('Unit Test') {
+            steps {
+                sh "mvn test"
+            }
+        } // Stage này dùng để chạy các bài kiểm tra đơn vị (unit test). Bạn có thể thay đổi lệnh này nếu bạn sử dụng ngôn ngữ khác.
+        stage('Sonarqube Analysis') {
+            steps {
+                sh ''' $SCANNER_HOME/bin/sonar-scanner \ 
+                -Dsonar.host.url=http://192.168.1.10:9000 \
+                -Dsonar.token=squ_2a4cfd9bae9fec56e46f5fe7714be9fc259c75e5 \
+                -Dsonar.projectName=social \
+                -Dsonar.java.binaries=. \
+                -Dsonar.projectKey=social '''
+            }
+        } // Stage này dùng để phân tích mã nguồn với SonarQube. Trong đó, bạn cần thay đổi các thông số như `sonar.host.url`, `sonar.token`, `sonar.projectName`, `sonar.java.binaries` và `sonar.projectKey` cho phù hợp với dự án của bạn. 
+        // `sonar.token` là token mà bạn đã tạo ở bước 3.1.2.
+        // `sonar.java.binaries` là đường dẫn đến thư mục chứa mã nguồn Java đã biên dịch. Bạn có thể thay đổi đường dẫn này nếu bạn sử dụng ngôn ngữ khác.
+        // `sonar.projectKey` là tên dự án mà bạn đã tạo trong SonarQube. Bạn có thể thay đổi tên này nếu bạn muốn. Hoặc đặt tên này giống với tên dự án trong Git repository, Sonarqube sẽ tự động tạo ra nếu bạn không đặt tên này.
+        // `sonar.host.url` là địa chỉ của máy chủ SonarQube mà bạn đang sử dụng. Đảm bảo rằng địa chỉ này là chính xác và có thể truy cập được từ Jenkins. Nếu chạy cùng mạng với Jenkins thì bạn có thể sử dụng `container_name` hoặc sửu dụng domain `host.docker.internal`.
+        
+        stage('Sonarqube Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        } // Stage này dùng để kiểm tra chất lượng mã nguồn với SonarQube. Nếu chất lượng không đạt yêu cầu, pipeline sẽ dừng lại.
+        stage('Build Application') {
+            steps {
+                sh "mvn clean install -DskipTests=true"
+            }
+        } // Stage này dùng để xây dựng ứng dụng với Maven. Bạn có thể thay đổi lệnh này nếu bạn sử dụng ngôn ngữ khác.
+        stage('Buidl & Push Docker Image') {
+            steps {
+                script{
+                    withDockerRegistry(credentialsId: 'c44439b3-1a18-4738-b550-9cb4f57d81f5', toolName: 'docker', url: 'https://docker.io') {
+                        sh "docker build -t social:latest -f docker/Dockerfile ."
+                        sh "docker tag social:latest dannguyenmessi/social:latest"
+                        sh "docker push dannguyenmessi/social:latest"
+                    }
+                }
+            }
+        } // Stage này dùng để xây dựng và đẩy Docker image lên Docker Hub. Bạn cần thay đổi `credentialsId` và `url` cho phù hợp với dự án của bạn. Dùng pipelinesyntax để tạo ra câu lệnh này. Bạn có thể tham khảo thêm tại [Jenkins Pipeline Syntax](![alt text](image-5.png)). 
+        // Phần `Docker registry` là host nơi mà bạn lưu trữ Docker image. Bạn có thể thay đổi `credentialsId` và `url` cho phù hợp với dự án của bạn.
+        // Phần `Registry credentialsId` Chọn Add -> Jenkins -> Username with password -> Nhập username password của bạn vào đây.
+        // `Docker installation` là tên Docker mà bạn đã cài đặt ở bước trước set cho Docker.
+        stage('Trigger CD Pipeline') {
+            steps {
+                build job: "CD_Pipeline", wait: true
+            }
+        } // Đây là stage dùng để gọi Job `CD_Pipeline` chạy theo kiểu `Build Trigger`.
+    }
+}
+
+```
+
+### 3.4. Tạo Job CD Pipeline cho Jenkins
+Job này sẽ được gọi từ Job CI Pipeline ở trên. Bạn có thể tạo Job này bằng cách vào `New Item` -> `Pipeline`. Đặt tên cho Job và chọn loại Job là `Pipeline`. Sau đó, bạn có thể nhập mã pipeline vào đây.
+```groovy
+pipeline {
+    agent any
+
+    stages {
+        stage('Docker Deploy To Container') {
+            steps {
+                script{
+                    withDockerRegistry(credentialsId: 'c44439b3-1a18-4738-b550-9cb4f57d81f5', toolName: 'docker', url: 'https://docker.io') {
+                        sh "docker rm -f social" 
+                        sh "docker run -d --name social -p 8081:8081 dannguyenmessi/social:latest"
+                    }
+                }
+            }
+        } // Stage này dùng để triển khai ứng dụng lên Docker container. Bạn cần thay đổi `credentialsId` và `url` cho phù hợp với dự án của bạn. Dùng pipelinesyntax giống như ở trên.
+    } // Thêm dấu ngoặc nhọn để kết thúc pipeline
+} // Kết thúc pipeline
+```
+
+### 3.5. Chạy Job CI/CD Pipeline
+Sau khi đã tạo xong các Job CI/CD, bạn có thể chạy Job CI Pipeline bằng cách vào `Dashboard` -> `Job CI Pipeline` và nhấn nút `Build Now`. Sau khi Job CI Pipeline chạy xong, nó sẽ tự động gọi Job CD Pipeline để triển khai ứng dụng lên Docker container.
