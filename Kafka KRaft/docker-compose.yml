@@ -52,6 +52,8 @@ services:
   #     KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093  # Danh sách các voter trong quorum
   #     KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092  # Các listener
   #     KAFKA_LOG_DIRS: /tmp/kraft-combined-logs  # Thư mục lưu log
+
+  #     KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  # Tự động tạo topic nếu không tồn tại
   #   volumes:
   #     - ./kafka-data:/var/lib/kafka/data
   #     - ./update_run.sh:/tmp/update_run.sh  # Mount script cập nhật
@@ -102,6 +104,8 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:29093,2@kafka2:29095  # Danh sách các voter trong quorum
       KAFKA_LISTENERS: PLAINTEXT://kafka1:29092,CONTROLLER://kafka1:29093,PLAINTEXT_HOST://0.0.0.0:9092  # Các listener
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs  # Thư mục lưu log
+
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  # Tự động tạo topic nếu không tồn tại
     volumes:
       - ./kafka1-data:/var/lib/kafka/data
       - ./update_run.sh:/tmp/update_run.sh  # Mount script cập nhật
@@ -152,6 +156,8 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:29093,2@kafka2:29095  # Danh sách các voter trong quorum
       KAFKA_LISTENERS: PLAINTEXT://kafka2:29094,CONTROLLER://kafka2:29095,PLAINTEXT_HOST://0.0.0.0:9094  # Các listener
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs  # Thư mục lưu log
+
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  # Tự động tạo topic nếu không tồn tại
     volumes:
       - ./kafka2-data:/var/lib/kafka/data
       - ./update_run.sh:/tmp/update_run.sh  # Mount script cập nhật
