@@ -9,6 +9,57 @@ services:
       - ./clusterID:/tmp/clusterID
     command: "bash -c '/tmp/create_cluster_id.sh'"
 
+# Cấu hình các dịch vụ Kafka standalone sử dụng KRaft mode
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.3.2  # Sử dụng image Kafka từ Confluent Platform
+  #   container_name: kafka  # Tên container
+  #   healthcheck:  # Cấu hình kiểm tra sức khỏe container
+  #     test: nc -z localhost 9092 || exit -1  # Kiểm tra port 9092 có hoạt động không
+  #     start_period: 15s  # Thời gian chờ trước khi bắt đầu kiểm tra
+  #     interval: 5s  # Khoảng thời gian giữa các lần kiểm tra
+  #     timeout: 10s  # Thời gian tối đa cho mỗi lần kiểm tra
+  #     retries: 10  # Số lần thử lại nếu kiểm tra thất bại
+  #   ports:
+  #     - "9092:9092"  # Port cho producer/consumer kết nối
+  #     - "29092:29092"  # Port cho inter-broker communication
+  #     - "9997:9997"  # Port cho JMX monitoring
+  #   environment:
+  #     # Cấu hình cơ bản
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT  # Tên listener cho giao tiếp giữa các broker
+  #     KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER  # Tên listener cho controller
+  #     KAFKA_COMPRESSION_TYPE: producer  # Loại nén dữ liệu
+  #     KAFKA_BROKER_ID: 1  # ID duy nhất cho mỗi broker
+  #     KAFKA_KRAFT_MODE: "true"
+      
+  #     # Cấu hình listeners và advertised listeners
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092  # Các listener được quảng bá
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT  # Map giữa listener và security protocol
+      
+  #     # Cấu hình replication và transaction
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1  # Số replica cho topic offsets
+  #     KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0  # Thời gian delay trước khi rebalance
+  #     KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1  # Số replica cho license topic
+  #     KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1  # Số ISR tối thiểu cho transaction state
+  #     KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1  # Số replica cho transaction state
+      
+  #     # Cấu hình JMX
+  #     KAFKA_JMX_PORT: 9997  # Port cho JMX
+  #     KAFKA_JMX_OPTS: -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka -Dcom.sun.management.jmxremote.rmi.port=9997  # Các tùy chọn JMX
+
+  #     # Cấu hình KRaft (Kafka Raft)
+  #     KAFKA_PROCESS_ROLES: 'broker,controller'  # Vai trò của node
+  #     KAFKA_NODE_ID: 1  # ID của node
+  #     KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093  # Danh sách các voter trong quorum
+  #     KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092  # Các listener
+  #     KAFKA_LOG_DIRS: /tmp/kraft-combined-logs  # Thư mục lưu log
+  #   volumes:
+  #     - ./kafka-data:/var/lib/kafka/data
+  #     - ./update_run.sh:/tmp/update_run.sh  # Mount script cập nhật
+  #     - ./clusterID:/tmp/clusterID
+  #   command: "bash -c '/tmp/update_run.sh && /etc/confluent/docker/run'"  # Command khởi động
+  #   networks:
+  #     - kafka-kraft-network  # Kết nối với mạng kafka-kraft-network
+
   kafka1:
     image: confluentinc/cp-kafka:7.3.2  # Sử dụng image Kafka từ Confluent Platform
     container_name: kafka1  # Tên container
@@ -48,11 +99,61 @@ services:
       # Cấu hình KRaft (Kafka Raft)
       KAFKA_PROCESS_ROLES: 'broker,controller'  # Vai trò của node
       KAFKA_NODE_ID: 1  # ID của node
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:29093  # Danh sách các voter trong quorum
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:29093,2@kafka2:29095  # Danh sách các voter trong quorum
       KAFKA_LISTENERS: PLAINTEXT://kafka1:29092,CONTROLLER://kafka1:29093,PLAINTEXT_HOST://0.0.0.0:9092  # Các listener
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs  # Thư mục lưu log
     volumes:
       - ./kafka1-data:/var/lib/kafka/data
+      - ./update_run.sh:/tmp/update_run.sh  # Mount script cập nhật
+      - ./clusterID:/tmp/clusterID
+    command: "bash -c '/tmp/update_run.sh && /etc/confluent/docker/run'"  # Command khởi động
+    networks:
+      - kafka-kraft-network  # Kết nối với mạng kafka-kraft-network
+  
+  kafka2:
+    image: confluentinc/cp-kafka:7.3.2  # Sử dụng image Kafka từ Confluent Platform
+    container_name: kafka2  # Tên container
+    healthcheck:  # Cấu hình kiểm tra sức khỏe container
+      test: nc -z localhost 9094 || exit -1  # Kiểm tra port 9092 có hoạt động không
+      start_period: 15s  # Thời gian chờ trước khi bắt đầu kiểm tra
+      interval: 5s  # Khoảng thời gian giữa các lần kiểm tra
+      timeout: 10s  # Thời gian tối đa cho mỗi lần kiểm tra
+      retries: 10  # Số lần thử lại nếu kiểm tra thất bại
+    ports:
+      - "9094:9094"  # Port cho producer/consumer kết nối
+      - "29094:29094"  # Port cho inter-broker communication
+      - "9998:9998"  # Port cho JMX monitoring
+    environment:
+      # Cấu hình cơ bản
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT  # Tên listener cho giao tiếp giữa các broker
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER  # Tên listener cho controller
+      KAFKA_COMPRESSION_TYPE: producer  # Loại nén dữ liệu
+      KAFKA_BROKER_ID: 2  # ID duy nhất cho mỗi broker
+      KAFKA_KRAFT_MODE: "true"
+      
+      # Cấu hình listeners và advertised listeners
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29094,PLAINTEXT_HOST://localhost:9094  # Các listener được quảng bá
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT  # Map giữa listener và security protocol
+      
+      # Cấu hình replication và transaction
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1  # Số replica cho topic offsets
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0  # Thời gian delay trước khi rebalance
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1  # Số replica cho license topic
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1  # Số ISR tối thiểu cho transaction state
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1  # Số replica cho transaction state
+      
+      # Cấu hình JMX
+      KAFKA_JMX_PORT: 9998  # Port cho JMX
+      KAFKA_JMX_OPTS: -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka2 -Dcom.sun.management.jmxremote.rmi.port=9998  # Các tùy chọn JMX
+
+      # Cấu hình KRaft (Kafka Raft)
+      KAFKA_PROCESS_ROLES: 'broker,controller'  # Vai trò của node
+      KAFKA_NODE_ID: 2  # ID của node
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:29093,2@kafka2:29095  # Danh sách các voter trong quorum
+      KAFKA_LISTENERS: PLAINTEXT://kafka2:29094,CONTROLLER://kafka2:29095,PLAINTEXT_HOST://0.0.0.0:9094  # Các listener
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs  # Thư mục lưu log
+    volumes:
+      - ./kafka2-data:/var/lib/kafka/data
       - ./update_run.sh:/tmp/update_run.sh  # Mount script cập nhật
       - ./clusterID:/tmp/clusterID
     command: "bash -c '/tmp/update_run.sh && /etc/confluent/docker/run'"  # Command khởi động
@@ -73,9 +174,10 @@ services:
       KAFKA_CLUSTERS_0_NAME: kafka1  # Tên cluster
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:29092  # Địa chỉ bootstrap servers
       KAFKA_CLUSTERS_0_METRICS_PORT: 9997  # Port cho metrics
-      # KAFKA_CLUSTERS_1_NAME: kafka2
-      # KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS: kafka2:29093
-      # KAFKA_CLUSTERS_1_METRICS_PORT: 9998
+      # Cấu hình cluster Kafka 2 (nếu là multi-cluster)
+      KAFKA_CLUSTERS_1_NAME: kafka2
+      KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS: kafka2:29094
+      KAFKA_CLUSTERS_1_METRICS_PORT: 9998
       
       # Cấu hình bảo mật
       DYNAMIC_CONFIG_ENABLED: 'true'  # Cho phép cấu hình động
