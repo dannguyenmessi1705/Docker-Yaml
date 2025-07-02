@@ -3,7 +3,7 @@ global:
   evaluation_interval: 5s
 
 scrape_configs:
-  - job_name: 'archetype'
+  - job_name: 'wus'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: [ '192.168.137.237:8080' ]
+      - targets: [ '10.207.248.53:8089' ]

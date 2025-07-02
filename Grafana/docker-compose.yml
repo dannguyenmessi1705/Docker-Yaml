@@ -208,7 +208,9 @@ services:
       - "4318:4318" # OTLP HTTP
       - "9411:9411" # Zipkin
       - "14268:14268" # Jaeger Thrift HTTP
-      - "4316:4316" # Jaeger Thrift gRPC
+      - "14250:14250" # Jaeger gRPC
+      - "6831:6831/udp" # Jaeger Thrift Compact
+      - "6832:6832/udp" # Jaeger Thrift Binary
     volumes:
       - ./observability/tempo/tempo-config.yml:/etc/tempo-config.yml
     networks:

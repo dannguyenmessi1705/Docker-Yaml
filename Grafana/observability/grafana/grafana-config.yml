@@ -18,6 +18,7 @@ datasources:
     editable: true
     jsonData:
       httpMethod: GET
+      timeout: 60
   - name: Tempo
     type: tempo
     uid: tempo
@@ -30,10 +31,22 @@ datasources:
     editable: true
     jsonData:
       httpMethod: GET
+      timeout: 60
       serviceMap:
         datasourceUid: 'prometheus'
       tracesToLogs:
         datasourceUid: 'loki'
+        mapTagNamesEnabled: true
+        mappedTags:
+          - key: 'correlationID'
+            value: 'correlationID'
+          - key: 'service'
+            value: 'service'
+          - key: 'RequestID'
+            value: 'RequestID'
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: true
       nodeGraph:
         enabled: true
   - name: Loki
@@ -45,5 +58,7 @@ datasources:
     url: http://gateway:3100
     jsonData:
       httpHeaderName1: "X-Scope-OrgID"
+      timeout: 60
+      maxLines: 1000
     secureJsonData:
       httpHeaderValue1: "tenant1"
