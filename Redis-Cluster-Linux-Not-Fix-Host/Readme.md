@@ -82,3 +82,5 @@ echo "🚀 Redis cluster ready."
 3. Sửa file `docker-compose.yml` expose port ra ngoài. Mỗi node expose 2 port, 1 port để connect với client, 1 port để connect với các node khác (bus port)
 
 4. Chạy lệnh `docker-compose up -d` để chạy redis cluster
+
+> Luư ý: Port của Redis Cluster phải thêm số `1` vào đầu. Ví dụ. redis port : ["7001:7001"]. Khi dùng cluster cần expose thêm port ["17001:17001"].
