@@ -1,0 +1,66 @@
+services:
+  quickwit:
+    image: quickwit/quickwit:latest
+    container_name: quickwit
+    ports:
+      - "7280:7280"
+      - "7281:7281"
+    environment:
+      QW_ENABLE_OTLP_ENDPOINT: "true"
+      QW_DATA_DIR: /quickwit/qwdata
+      NO_COLOR: 1
+    volumes:
+      - ./qwdata:/quickwit/qwdata
+      - ./quickwit-config:/quickwit/config
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:7280/health/livez" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+    command: [ "run" ]
+    networks:
+      - log
+
+  otel-collector:
+    container_name: otel-collector
+    image: otel/opentelemetry-collector-contrib:latest
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ./otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+    depends_on:
+      quickwit:
+        condition: service_healthy
+    networks:
+      - log
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - quickwit
+    environment:
+      GF_INSTALL_PLUGINS: quickwit-quickwit-datasource
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    networks:
+      - log
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - log
+
+networks:
+  log:
+    driver: bridge
